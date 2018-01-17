@@ -1,0 +1,475 @@
+<!DOCTYPE HTML>
+<html>
+    <title>Arjen Scherff-de Water. Designer / Frontend developer</title>
+    <head>
+        <meta name="description" content="Arjen Scherff-de Water. Designer / Frontend developer" />
+        <meta name="keywords" content="html,html5,css,css3,webdesign,Aratramba" />
+        <meta name="author" content="Arjen Scherff-de Water" />
+        <style type="text/css">
+        @keyframes fadein {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @-moz-keyframes fadein {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @-webkit-keyframes fadein {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @-ms-keyframes fadein {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @-o-keyframes fadein {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        body, html{
+            margin: 0;
+            padding: 0;
+            background: #fefefe;
+    		text-align: center;
+    		overflow: hidden;
+        }
+        #canvas{
+            background-color: #fff;
+            margin: 0 auto;
+            -webkit-animation: fadein 2s;
+               -moz-animation: fadein 2s;
+                -ms-animation: fadein 2s;
+                 -o-animation: fadein 2s;
+                    animation: fadein 2s;
+
+        }
+        #noise{
+            display: block;
+        }
+        h1,h2{ display: none; }
+        </style>
+    </head>
+<body>
+    
+    <h1>Arjen Scherff-de Water</h1>
+    <h2>Designer / Frontend developer</h2>
+    
+	<canvas id="canvas">
+		<p>canvas not supported</p>
+	</canvas>
+	
+	<canvas id="noise"></canvas>
+
+	
+    <script>
+
+        // http://paulirish.com/2011/requestanimationframe-for-smart-animating/
+        // http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
+        // requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
+        // MIT license
+         
+        (function() {
+            var lastTime = 0;
+            var vendors = ['ms', 'moz', 'webkit', 'o'];
+            for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+                window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
+                window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame'] 
+                                           || window[vendors[x]+'CancelRequestAnimationFrame'];
+            }
+         
+            if (!window.requestAnimationFrame)
+                window.requestAnimationFrame = function(callback, element) {
+                    var currTime = new Date().getTime();
+                    var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+                    var id = window.setTimeout(function() { callback(currTime + timeToCall); }, 
+                      timeToCall);
+                    lastTime = currTime + timeToCall;
+                    return id;
+                };
+         
+            if (!window.cancelAnimationFrame)
+                window.cancelAnimationFrame = function(id) {
+                    clearTimeout(id);
+                };
+        }());
+
+
+        function random(n1, n2,round){
+            var n = Math.floor(Math.random()*(1+n2-n1))+n1
+            return round ? Math.round(n) : n;
+        }
+
+        
+        //////////////////////////////////////////////
+        // Stage
+        //////////////////////////////////////////////
+        
+        function Stage(){
+
+            var canvas = null,
+            context = null,
+            width = null,
+            height = null,
+            timer = null,
+            counter = 0,
+            focus = { x: 0, y: 0 },
+            particles = [],
+            leader = null,
+            veins = [],
+            artery = null,
+            FRAME_RATE = 25;
+
+            //////////////////////////////////////////////
+            // init
+            //////////////////////////////////////////////
+
+            function init(){
+                canvas = document.getElementById('canvas');
+                context = canvas.getContext('2d');
+
+                resize();
+
+                focus.x = width / 2;
+                focus.y = width / 2;
+
+                addVein();
+                loop();
+            }
+
+        
+            //////////////////////////////////////////////
+            // loop
+            //////////////////////////////////////////////
+            
+            function loop(){
+
+                setTimeout(function(){
+                    requestAnimationFrame(loop);
+                }, 1000 / FRAME_RATE);
+                
+                
+                // fill background
+                context.fillStyle = '#fefefe';
+                context.clearRect(0, 0, width, height);
+                
+                // get half stageWidth / stageHeight
+                var w = width / 2;
+                var h = height / 2;
+                
+                if(counter % 50 === 1){
+                    addVein(random(1,5,true));
+                }
+
+                var gradient = context.createRadialGradient(100, 75, 0, 100, 75, 12);
+                gradient.addColorStop(0, 'rgba(0,160,0,.1)');
+                gradient.addColorStop(1, 'rgba(0,160,0, 0)');
+                
+                // find al veins
+                var i=0, j, p, last, vein, isArtery, x, y, lastX, lastY;
+                for(; i<veins.length; ++i){
+                    
+                    vein = veins[i];
+                    isArtery = (i === artery);
+                    
+                    // create particle
+                    if(!isArtery && vein.isGrowing && vein.particles.length < vein.length){
+                        addParticle(i);
+                    }
+                    
+                    // artery logic
+                    if(isArtery){
+                        
+                        addParticle(i);
+                        
+                        // 'move the stage'
+                        focus.x += (vein.leader.x - focus.x) / 10;
+                        focus.y += (vein.leader.y - focus.y) / 10;
+
+                    }
+                    
+                    j = 0;
+                    p = null;
+                    last = null;
+                    
+                    // find all particles within vein
+                    for(; j<vein.particles.length; ++j){
+
+                        p = vein.particles[j];
+
+                        // find coordinates
+                        x = p.x - focus.x + w;
+                        y = p.y - focus.y + h;
+                        
+         
+                        // if there was a previous particle
+                        if(last && last.ttl > 0 && last.x !== 0 && last.y !== 0){
+                            
+                            lastX = w + last.x - focus.x;
+                            lastY = h + last.y - focus.y;
+              
+                            // connect with a thick line
+                            context.strokeStyle = 'rgba(0, 160, 0, .6)';
+                            context.fillStyle = gradient;
+                            context.lineWidth = p.scaleX;
+                            if(!isArtery){
+                                context.strokeStyle = 'rgba(255,255,255, .8)';
+                                context.lineWidth = 2;
+                            }
+                            context.moveTo(lastX, lastY);
+                            context.lineTo(x, y);
+                            // context.stroke();
+                            context.fill();
+
+                            // connect with a thin line
+                            context.lineWidth = p.scaleX / 3;
+                            context.strokeStyle = 'rgba(0,160,0,.3)';
+                            context.moveTo(lastX, lastY);
+                            context.lineTo(x, y);
+                            context.stroke();
+                            context.fill();
+                        }
+
+                        // draw big circle
+                        context.fillStyle = gradient;
+                        context.beginPath();
+                        context.arc(x, y, 12, 0, Math.PI * 2, true);
+                        context.closePath();
+                        context.fill();
+
+                        // draw tiny circle
+                        context.fillStyle = gradient;
+                        context.beginPath();
+                        context.arc(x, y, 1, 0, Math.PI * 2, true);
+                        context.closePath();
+                        // context.stroke();
+                        
+                        
+                        if(!isArtery && j === vein.length - 1){
+                            // for(var z=1; z<2; ++z){
+                                context.fillStyle = 'hsla('+ vein.flower.h +','+ vein.flower.s +'%,'+ vein.flower.l +'%,'+ vein.flower.a +')';
+                                context.beginPath();
+                                context.arc(x, y, 2, 0, Math.PI * 2, true);
+                                context.closePath();
+                                context.fill();
+                                
+                                context.fillStyle = 'hsla('+ vein.flower.h +','+ vein.flower.s +'%,'+ vein.flower.l +'%,.4)';
+                                context.beginPath();
+                                context.arc(x, y, 4, 0, Math.PI * 2, true);
+                                context.closePath();
+                                context.fill();
+                                
+                                context.fillStyle = 'hsla('+ vein.flower.h +','+ vein.flower.s +'%,'+ vein.flower.l +'%,.1)';
+                                context.beginPath();
+                                context.arc(x, y, 10, 0, Math.PI * 2, true);
+                                context.closePath();
+                                context.fill();
+                            // }
+                        }
+
+                        // kill a little
+                        --p.ttl;
+
+                        // if 'should-be-almost-dead'
+                        if(p.ttl <= 0){
+                            // fade a little
+                            p.alpha -= .05;
+                            // if 'should-be-dead'
+                            if(p.alpha <= 0){
+                                // remove
+                                removeParticle(i, j);
+                                
+                                // remove vein
+                                if(vein.particles.length <= 0){
+                                    removeVein(i);
+                                }
+                            }
+                        }
+                        // set reference to last particle
+                        last = p;
+                    }
+                } 
+                
+                // update timer counter
+                ++counter;
+
+            }
+
+
+            //////////////////////////////////////////////
+            // addParticle
+            //////////////////////////////////////////////
+            
+            function addParticle(vein){
+                
+                // find matching vein
+                var vein = veins[vein], p;
+                
+                p = new Particle();
+                
+                // if there is a leader
+                if(vein.leader){
+                    
+                    // create random length
+                    var l = random(10, 25);
+                    // create random angle
+                    p.angle += vein.leader.angle + (Math.PI / 180 * (random(-20, 20)));
+                    p.x = vein.leader.x + Math.cos(p.angle) * l;
+                    p.y = vein.leader.y + Math.sin(p.angle) * l;
+                    p.scaleX = p.scaleY = Math.cos(p.angle) * 10 + 2;
+
+                    
+                // if no leader
+                }else{
+                    
+                    // set positions to artery leader positions
+                    p.x = vein.start.x;
+                    p.y = vein.start.y;
+                    p.angle = vein.start.angle;
+                }
+                
+                // set time to live
+                p.ttl = 70;
+                
+                // add particle to vein
+                vein.particles.push(p);
+
+                // set new leader
+                vein.leader = p;
+                
+                // return
+                return p;
+            }
+            
+            
+            //////////////////////////////////////////////
+            // removeParticle
+            //////////////////////////////////////////////
+            
+            function removeParticle(v, n){
+                vein = veins[v];
+                var p = vein.particles[n];
+                p.alpha = 1;
+                p.x = 0;
+                p.y = 0;
+                p.angle = 0;
+                p.ttl = 0;
+                vein.isGrowing = false;
+                vein.particles.splice(n,1);
+            }
+            
+            
+            //////////////////////////////////////////////
+            // addVein
+            //////////////////////////////////////////////
+            
+            function addVein(num){
+                var currentArtery = veins[artery], v;
+                var length;
+                num = num || 1;
+                
+                // create new veins
+                while(num--){
+                    v = {
+                        isGrowing: true,
+                        particles: [],
+                        leader: null,
+                        length: random(5,20,true),
+                        start: { x: 0, y: 0, angle: 0 },
+                        flower: {
+                            h: random(200,300,true),
+                            s: random(50,100,true),
+                            l: random(30,100,true),
+                            a: 1
+                        }
+                    };
+                
+                    // if there is no artery, this is the one
+                    if(artery === null || typeof artery === 'undefined'){
+                        artery = veins.length;
+                    
+                    // if there is an artery
+                    }else{
+                        
+                        // set starting positions for first particle of new vein
+                        v.start.x = currentArtery.leader.x;
+                        v.start.y = currentArtery.leader.y;
+                        v.start.angle = currentArtery.leader.angle;
+                    }
+                
+                    // add vein
+                    veins.push(v);
+                }
+            }
+            
+            
+            //////////////////////////////////////////////
+            // removeVein
+            //////////////////////////////////////////////
+            
+            function removeVein(n){
+                veins.splice(n,1);
+            }
+
+
+
+            //////////////////////////////////////////////
+            // onResize
+            //////////////////////////////////////////////
+            
+            function resize(){
+                canvas.width = width = window.innerWidth
+                canvas.height = height = window.innerHeight;
+            }
+
+            return {
+                init: init,
+                resize: resize
+            }
+        }
+
+
+
+        //////////////////////////////////////////////
+        // Particle
+        //////////////////////////////////////////////
+        
+        function Particle(){}
+        
+        Particle.prototype.x = 0;
+        Particle.prototype.y = 0;
+        Particle.prototype.vx = 0;
+        Particle.prototype.vy = 0;
+        Particle.prototype.angle = 0;
+        Particle.prototype.width = 0;
+        Particle.prototype.height = 0;
+        Particle.prototype.scaleX = 1;
+        Particle.prototype.scaleY = 1;
+        Particle.prototype.alpha = 1;
+        Particle.prototype.id = 0;
+        Particle.prototype.ttl = 0;
+        
+        Particle.prototype.toString = function(){ return "Particle" };
+        
+
+
+        stage = new Stage();
+        stage.init();
+
+        window.onresize = function(){
+            stage.resize();
+        }
+
+
+        var _gaq = _gaq || [];
+        _gaq.push(['_setAccount', 'UA-2075001-1']);
+        _gaq.push(['_trackPageview']);
+
+        (function() {
+            var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+            ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+        })();
+
+    </script>
+</body>
+</html>
